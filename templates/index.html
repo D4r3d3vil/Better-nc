@@ -1,0 +1,338 @@
+<html>
+
+<head>
+	<script>
+		let files,
+			message = "",
+			choice,
+			files_recieved,
+			size = 0,
+			filename = "",
+			type = '';
+		async function upload() {
+			const formData = new FormData();
+			files = document.getElementById('files').files
+			formData.append("file", files[0]);
+			const res = await fetch("http://127.0.0.1:8000/upload", {
+				method: "POST",
+				body: formData,
+			});
+			const msg = await res.json();
+			document.getElementById('message').innerHTML = msg.message;
+			setTimeout(() => { document.getElementById('message').innerHTML = '' }, 1000)
+		}
+		async function get_files() {
+			const response = await fetch("http://127.0.0.1:8000/getfile", {
+				method: "GET",
+			});
+			const data = await response.blob();
+			if (data.size < 1) return (document.getElementById('message').innerHTML = "Listening for files...");
+			file_recieved(data);
+		}
+		async function file_recieved(file) {
+			size = formatBytes(file.size);
+			files_recieved = file;
+			const response = await fetch("http://127.0.0.1:8000/getname", {
+				method: "GET",
+			});
+			const { name } = await response.json();
+			filename = name;
+			const res = await fetch(`http://127.0.0.1:8000/mimetype?name=${filename}`, {
+				method: "GET",
+			});
+			const { mimetype } = await res.json();
+			type = mimetype;
+			updateUI();
+		}
+		function formatBytes(a, b = 2) {
+			if (!+a) return "0 Bytes";
+			const c = 0 > b ? 0 : b,
+				d = Math.floor(Math.log(a) / Math.log(1024));
+			return `${parseFloat((a / Math.pow(1024, d)).toFixed(c))} ${["Bytes", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"][d]
+				}`;
+		}
+		const download = (path) => {
+			const anchor = document.createElement("a");
+			anchor.href = path;
+			anchor.download = filename;
+			document.body.appendChild(anchor);
+			anchor.click();
+			document.body.removeChild(anchor);
+		};
+		async function download_file() {
+			const url = URL.createObjectURL(files_recieved);
+			download(url, `${filename}`);
+			document.getElementById('message').innerHTML = "File downloaded sucessfully!";
+			files_recieved = false;
+			updateUI();
+		}
+		async function updateUI() {
+			document.getElementById("choice").style.display = "none";
+			if (choice) {
+				if (choice == "upload") {
+					document.getElementById("upload").style.display = "block";
+					document.getElementById("recieve").style.display = "none";
+				}
+				if (files_recieved) {
+					document.getElementById('preview').style.display = 'none'
+					ipreview.style.display = 'none'
+					document.getElementById('tpreview').innerHTML = ''
+					document.getElementById("model").classList.add("model-open");
+					document.getElementById("name").innerHTML = filename;
+					document.getElementById("type").innerHTML = type;
+					document.getElementById("size").innerHTML = size;
+					if (type.includes('pdf')) {
+						document.getElementById('preview').style.display = ''
+						var canvas = document.getElementById("preview");
+						// Get the canvas context
+						var context = canvas.getContext("2d");
+						// Load the PDF file
+						var reader = new FileReader();
+						reader.addEventListener("load", function (event) {
+							pdfjsLib.getDocument(event.target.result).promise.then(function (pdf) {
+								// Get the first page
+								pdf.getPage(1).then(function (page) {
+									// Set the scale of the viewport
+									var scale = 1;
+									// Get the viewport of the page
+									var viewport = page.getViewport({ scale: scale });
+									// Set the canvas width and height to match the viewport
+									canvas.width = viewport.width;
+									canvas.height = viewport.height;
+									// Render the page on the canvas
+									page.render({
+										canvasContext: context,
+										viewport: viewport
+									});
+								});
+							});
+						})
+						reader.readAsArrayBuffer(files_recieved)
+					}
+					if (type.includes('image')) {
+						ipreview = document.getElementById('ipreview')
+						ipreview.style.display = ''
+						ipreview.innerHTML = ''
+						var src = URL.createObjectURL(files_recieved)
+						var img = document.createElement('img')
+						img.src = src
+						img.style.width = '100%'
+						img.style.maxHeight = '400px'
+						ipreview.appendChild(img)
+					}
+					if (type.includes('text')) {
+						document.getElementById('tpreview').innerHTML = (await files_recieved.text()).replaceAll('\n', '<br>')
+					}
+				} else {
+					document.getElementById("model").classList.remove("model-open");
+				}
+			} else {
+				document.getElementById("upload").style.display = "none";
+				document.getElementById("recieve").style.display = "none";
+			}
+		}
+	</script>
+	<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.min.js"></script>
+	<!-- Set the worker source to the same version -->
+	<script>
+		pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.worker.min.js";
+	</script>
+</head>
+
+<body>
+	<div id="upload" style="display: none;">
+		<input type="file" id="files" />
+		<button onclick="upload()">Upload</button>
+		<p id="message"></p>
+	</div>
+	<div id="recieve">
+		<p id="message"></p>
+	</div>
+	<div id="choice">
+		<p>Would you like to:</p>
+		<button id='ss' onclick="
+        choice = 'upload';
+        updateUI();
+    ">Send</button>
+		<p>or</p>
+		<button id='s' onclick="
+        choice = 'recieve';
+        setInterval(get_files, 1000);
+        updateUI();
+    ">Recieve</button>
+	</div>
+	<div id="model" class="custom-model-main">
+		<div class="custom-model-inner">
+			<div class="custom-model-wrap">
+				<div class="pop-up-content-wrap">
+					<p style="text-align:center;">File recieved</p>
+					<p>name: <span id="name"></span></p>
+					<p>type: <span id="type"></span></p>
+					<p>
+						size: <span id="size"></span>
+					</p>
+					<canvas id="preview"></canvas>
+					<div id="ipreview"></div>
+					<div id="tpreview"></div>
+					<button class="decline" onclick="
+        files_recieved = false;
+        updateUI();
+    ">Decline</button>
+					<button class="accept" onclick="download_file()">Accept</button>
+				</div>
+			</div>
+		</div>
+		<div class="bg-overlay">
+		</div>
+</body>
+<style>
+	body {
+		font: normal 14px/100% "Andale Mono", AndaleMono, monospace;
+		width: 300px;
+		margin: 0 auto;
+		display: flex;
+		align-items: center;
+	}
+
+	.custom-model-main {
+		text-align: center;
+		overflow: hidden;
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		/* z-index: 1050; */
+		-webkit-overflow-scrolling: touch;
+		outline: 0;
+		opacity: 0;
+		-webkit-transition: opacity 0.15s linear, z-index 0.15;
+		-o-transition: opacity 0.15s linear, z-index 0.15;
+		transition: opacity 0.15s linear, z-index 0.15;
+		z-index: -1;
+		overflow-x: hidden;
+		overflow-y: auto;
+	}
+
+	.model-open {
+		z-index: 99999;
+		opacity: 1;
+		overflow: hidden;
+	}
+
+	.custom-model-inner {
+		-webkit-transform: translate(0, -25%);
+		-ms-transform: translate(0, -25%);
+		transform: translate(0, -25%);
+		-webkit-transition: -webkit-transform 0.3s ease-out;
+		-o-transition: -o-transform 0.3s ease-out;
+		transition: -webkit-transform 0.3s ease-out;
+		-o-transition: transform 0.3s ease-out;
+		transition: transform 0.3s ease-out;
+		transition: transform 0.3s ease-out, -webkit-transform 0.3s ease-out;
+		display: inline-block;
+		vertical-align: middle;
+		width: 600px;
+		margin: 30px auto;
+		max-width: 97%;
+	}
+
+	.custom-model-wrap {
+		display: block;
+		width: 100%;
+		position: relative;
+		background-color: #fff;
+		border: 1px solid #999;
+		border: 1px solid rgba(0, 0, 0, 0.2);
+		border-radius: 6px;
+		-webkit-box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+		box-shadow: 0 3px 9px rgba(0, 0, 0, 0.5);
+		background-clip: padding-box;
+		outline: 0;
+		text-align: left;
+		padding: 20px;
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;
+		max-height: calc(100vh - 70px);
+		overflow-y: auto;
+	}
+
+	.model-open .custom-model-inner {
+		-webkit-transform: translate(0, 0);
+		-ms-transform: translate(0, 0);
+		transform: translate(0, 0);
+		position: relative;
+		z-index: 999;
+	}
+
+	.model-open .bg-overlay {
+		background: rgba(0, 0, 0, 0.6);
+		z-index: 99;
+	}
+
+	.bg-overlay {
+		background: rgba(0, 0, 0, 0);
+		height: 100vh;
+		width: 100%;
+		position: fixed;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 0;
+		-webkit-transition: background 0.15s linear;
+		-o-transition: background 0.15s linear;
+		transition: background 0.15s linear;
+	}
+
+	@media screen and (min-width: 800px) {
+		.custom-model-main:before {
+			content: "";
+			display: inline-block;
+			height: auto;
+			vertical-align: middle;
+			margin-right: -0px;
+			height: 100%;
+		}
+	}
+
+	@media screen and (max-width: 799px) {
+		.custom-model-inner {
+			margin-top: 45px;
+		}
+	}
+
+	.decline,
+	.accept {
+		width: 40vw;
+		max-width: 250px;
+		height: 40px;
+		border-radius: 20px;
+	}
+
+	.decline {
+		background-color: red;
+	}
+
+	.accept {
+		background-color: lightgreen;
+	}
+
+	#preview {
+		border: 1px solid black;
+		width: 80%;
+		height: auto;
+		margin: 10px auto;
+	}
+
+	#tpreview {
+		white-space: nowrap;
+		overflow-y: scroll;
+		height: 400px;
+		width: 100%;
+		white-space: initial;
+	}
+</style>
+
+</html>
