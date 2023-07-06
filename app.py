@@ -32,14 +32,6 @@ def get_files():
 def get_name():
     return jsonify({'name': file_names.pop()})
 
-@app.route("/mimetype")
-@cross_origin()
-def detect_mimetype():
-  filename = request.args.get("name")
-  ext = filename.split(".")[-1]
-  mimetype = mimetypes.types_map.get("." + ext, "unknown")
-  return jsonify({"mimetype": mimetype})
-
 @app.route('/')
 def index():
     return render_template('index.html')
