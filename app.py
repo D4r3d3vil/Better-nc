@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS, cross_origin
 from config import Config
 import mimetypes
+
 app = Flask(__name__)
 cors = CORS(app)
 app.config.from_object(Config)
@@ -46,4 +47,3 @@ def index():
 if __name__ == '__main__':
     requests.packages.urllib3.disable_warnings()
     app.run(host='0.0.0.0', port=8000)
-

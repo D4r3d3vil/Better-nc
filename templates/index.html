@@ -26,7 +26,7 @@
 				method: "GET",
 			});
 			const data = await response.blob();
-			if (data.size < 1) return (document.getElementById('message').innerHTML = "Listening for files...");
+			if (data.size < 1) return document.getElementById('message').innerHTML = 'Listening for files...'
 			file_recieved(data);
 		}
 		async function file_recieved(file) {
@@ -37,11 +37,7 @@
 			});
 			const { name } = await response.json();
 			filename = name;
-			const res = await fetch(`http://127.0.0.1:8000/mimetype?name=${filename}`, {
-				method: "GET",
-			});
-			const { mimetype } = await res.json();
-			type = mimetype;
+			type = getMimeType('.'+filename.split('.').pop());
 			updateUI();
 		}
 		function formatBytes(a, b = 2) {
@@ -77,6 +73,7 @@
 					document.getElementById('preview').style.display = 'none'
 					ipreview.style.display = 'none'
 					document.getElementById('tpreview').innerHTML = ''
+					document.getElementById('tpreview').style.display = 'none'
 					document.getElementById("model").classList.add("model-open");
 					document.getElementById("name").innerHTML = filename;
 					document.getElementById("type").innerHTML = type;
@@ -131,6 +128,43 @@
 				document.getElementById("recieve").style.display = "none";
 			}
 		}
+		function getMimeType(extension) {
+			const mimetypes = {
+				".txt": "text/plain",
+				".html": "text/html",
+				".css": "text/css",
+				".js": "text/javascript",
+				".csv": "text/csv",
+				".xml": "text/xml",
+				".json": "application/json",
+				".pdf": "application/pdf",
+				".zip": "application/zip",
+				".jar": "application/java-archive",
+				".doc": "application/msword",
+				".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+				".ppt": "application/vnd.ms-powerpoint",
+				".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+				".xls": "application/vnd.ms-excel",
+				".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				".jpg": "image/jpeg",
+				".png": "image/png",
+				".gif": "image/gif",
+				".bmp": "image/bmp",
+				".avif": "image/avif",
+				".ico": "image/vnd.microsoft.icon",
+				".mp3": "audio/mpeg",
+				".ogg": "audio/ogg",
+				".wav": "audio/wav",
+				".aac": "audio/aac",
+				".mid, .midi": "audio/midi, audio/x-midi",
+				".mp4": "video/mp4",
+				".ogv": "video/ogg",
+				".webm": "video/webm",
+				'.vmdk': "VMware virtual machine"
+			};
+
+			return mimetypes[extension] || "Unknown";
+		}
 	</script>
 	<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@2.7.570/build/pdf.min.js"></script>
 	<!-- Set the worker source to the same version -->
@@ -143,11 +177,10 @@
 	<div id="upload" style="display: none;">
 		<input type="file" id="files" />
 		<button onclick="upload()">Upload</button>
-		<p id="message"></p>
 	</div>
 	<div id="recieve">
-		<p id="message"></p>
 	</div>
+	<p id="message"></p>
 	<div id="choice">
 		<p>Would you like to:</p>
 		<button id='ss' onclick="
