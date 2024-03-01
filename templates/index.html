@@ -118,7 +118,8 @@
 						ipreview.appendChild(img)
 					}
 					if (type.includes('text')) {
-						document.getElementById('tpreview').innerHTML = (await files_recieved.text()).replaceAll('\n', '<br>')
+						document.getElementById('tpreview').innerText = (await files_recieved.text())
+						document.getElementById('tpreview').style.display = ''
 					}
 				} else {
 					document.getElementById("model").classList.remove("model-open");
